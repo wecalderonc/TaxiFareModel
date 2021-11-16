@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/will/code/wecalderonc/TaxiFareModel/mlruns/1/6ed5b83c29f64fa19df895d346e15758/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 6ed5b83c29f64fa19df895d346e15758
+run_uuid: 6ed5b83c29f64fa19df895d346e15758
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1637089586065
+status: 1
+tags: []
+user_id: unknown
