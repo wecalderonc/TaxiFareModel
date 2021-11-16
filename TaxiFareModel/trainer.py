@@ -8,19 +8,26 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
 from memoized_property import memoized_property
+from xgboost import XGBRegressor
+
+
+
+import joblib
 
 import mlflow
 from mlflow.tracking import MlflowClient
 
-MLFLOW_URI = "https://mlflow.lewagon.co/"
+
 
 class Trainer():
+    MLFLOW_URI = "https://mlflow.lewagon.co/"
+
     def __init__(self, X, y):
         """
             X: pandas DataFrame
             y: pandas Series
         """
-        self.pipeline = self.set_pipeline()
+        self.pipeline = None
         self.X = X
         self.y = y
         self.X_train = None
@@ -28,7 +35,7 @@ class Trainer():
         self.experiment_name = "[BR] [RJ] [wecalderonc] Linear 1.0.0"
 
 
-    def set_pipeline(self):
+    def set_pipeline(self, estimator, estimator_name):
         '''returns a pipelined model'''
         dist_pipe = Pipeline([
             ('dist_trans', DistanceTransformer()),
@@ -46,9 +53,12 @@ class Trainer():
 
         pipeline = Pipeline([
             ('preproc', preproc_pipe),
-            ('linear_model', LinearRegression())
+            (estimator_name, estimator)
+            #('linear_model', LinearRegression())
         ])
-        return pipeline
+
+        self.pipeline = pipeline
+        return self.pipeline
 
     def run(self):
         '''returns a trained pipelined model'''
@@ -66,9 +76,13 @@ class Trainer():
         self.mlflow_log_metric("rmse", rmse)
         return rmse
 
+    def save_model(self):
+        """ Save the trained model into a model.joblib file """
+        joblib.dump(self.pipeline, 'model.joblib')
+
     @memoized_property
     def mlflow_client(self):
-        mlflow.set_tracking_uri(MLFLOW_URI)
+        mlflow.set_tracking_uri(self.MLFLOW_URI)
         return MlflowClient()
 
     @memoized_property
@@ -99,11 +113,35 @@ if __name__ == "__main__":
     X = df.drop("fare_amount", axis=1)
     # hold out
     # train
-    trainer = Trainer(X, y)
-    trainer.run()
-    # evaluate
-    rmse = trainer.evaluate(trainer.X_test, trainer.y_test)
-    experiment_id = trainer.mlflow_experiment_id
+    estimators = {
+      "linear_model": LinearRegression(),
+      "xgboost": XGBRegressor(max_depth=10, n_estimators=100, learning_rate=0.1)
+    }
 
-    print(f"experiment URL: https://mlflow.lewagon.co/#/experiments/{experiment_id}")
-    print(rmse)
+    # xgb_reg.fit(X_train, y_train,
+    #             # evaluate loss at each iteration
+    #             # eval_set=[(X_train, y_train), (X_val, y_val)],
+    #             # stop iterating when eval loss increases 5 times in a row
+    #             # early_stopping_rounds=5
+    #             )
+
+    # y_pred = xgb_reg.predict(X_val)
+
+
+    for name, model in estimators.items():
+      trainer = Trainer(X, y)
+
+      trainer.set_pipeline(model, name)
+      trainer.run()
+      # evaluate
+      rmse = trainer.evaluate(trainer.X_test, trainer.y_test)
+      experiment_id = trainer.mlflow_experiment_id
+      #save model
+      trainer.save_model()
+
+      print(
+          f"experiment URL: https://mlflow.lewagon.co/#/experiments/{experiment_id}")
+      print(rmse)
+
+
+
